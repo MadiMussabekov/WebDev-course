@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }}</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 0;
+            background: #1e1e2f;
+            color: #f5f5f5;
+        }
+
+        main {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        h1 { margin: 0 0 .25rem; font-size: 2.2rem; }
+        .sub { color: #a0a0c0; margin: 0 0 1.5rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .stat { background: #2a2a40; border-radius: 10px; padding: .75rem 1rem; min-width: 120px; }
+        .stat b { display: block; font-size: 1.5rem; }
+        .stat span { color: #a0a0c0; font-size: .85rem; }
+
+        form { background: #2a2a40; border-radius: 12px; padding: 1rem; display: grid; gap: .6rem; margin-bottom: 2rem; }
+        input, textarea, select, button {
+            font: inherit; padding: .55rem .7rem; border-radius: 8px;
+            border: 1px solid #3d3d5c; background: #1e1e2f; color: #f5f5f5;
+        }
+        textarea { min-height: 90px; resize: vertical; }
+        .row { display: flex; gap: .6rem; flex-wrap: wrap; }
+        .row > * { flex: 1; min-width: 160px; }
+        button { background: #7c5cff; border: none; cursor: pointer; font-weight: 600; }
+        button:hover { background: #6a4be6; }
+        #formError { color: #ff8080; min-height: 1.2em; margin: 0; }
+
+        .capsule { background: #2a2a40; border-radius: 12px; padding: 1rem; margin-bottom: .8rem; border-left: 4px solid #7c5cff; }
+        .capsule.unlocked { border-left-color: #3ddc97; cursor: pointer; }
+        .capsule h3 { margin: 0 0 .25rem; }
+        .meta { color: #a0a0c0; font-size: .85rem; }
+        .countdown { font-variant-numeric: tabular-nums; color: #ffcc66; }
+        .message { white-space: pre-wrap; margin-top: .6rem; padding-top: .6rem; border-top: 1px solid #3d3d5c; }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>⏳ {{ title }}</h1>
+        <p class="sub">Write a message to the future. Nobody — not even the API — can read it until it unlocks.</p>
+
+        <div class="stats">
+            <div class="stat"><b id="sTotal">–</b><span>capsules</span></div>
+            <div class="stat"><b id="sLocked">–</b><span>still sealed</span></div>
+            <div class="stat"><b id="sUnlocked">–</b><span>opened up</span></div>
+            <div class="stat"><b id="sOpens">–</b><span>times read</span></div>
+        </div>
+
+        <form id="form">
+            <div class="row">
+                <input id="author" placeholder="Your name" maxlength="60" required>
+                <input id="titleInput" placeholder="Title" maxlength="100" required>
+            </div>
+            <textarea id="message" placeholder="Dear future me..." maxlength="2000" required></textarea>
+            <div class="row">
+                <select id="preset">
+                    <option value="60">Unlock in 1 minute</option>
+                    <option value="3600">Unlock in 1 hour</option>
+                    <option value="86400">Unlock in 1 day</option>
+                    <option value="604800">Unlock in 1 week</option>
+                    <option value="custom">Pick a date…</option>
+                </select>
+                <input id="customDate" type="datetime-local" hidden>
+                <button type="submit">Seal capsule 🔒</button>
+            </div>
+            <p id="formError"></p>
+        </form>
+
+        <div id="list"></div>
+    </main>
+
+    <script>
+        const $ = (id) => document.getElementById(id);
+        let capsules = [];
+        const opened = {};
+
+        function fmtLeft(s) {
+            const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600),
+                m = Math.floor(s % 3600 / 60), sec = s % 60;
+            return (d ? d + "d " : "") + String(h).padStart(2, "0") + ":" +
+                String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
+        }
+
+        function escapeHtml(t) {
+            const div = document.createElement("div");
+            div.textContent = t;
+            return div.innerHTML;
+        }
+
+        function render() {
+            const now = Date.now();
+            $("list").innerHTML = capsules.map(c => {
+                const left = Math.max(0, Math.round((new Date(c.unlock_at) - now) / 1000));
+                const locked = left > 0;
+                return `<div class="capsule ${locked ? "" : "unlocked"}" data-id="${c.id}">
+                    <h3>${locked ? "🔒" : "📬"} ${escapeHtml(c.title)}</h3>
+                    <div class="meta">by ${escapeHtml(c.author)} · sealed ${new Date(c.created_at).toLocaleString()}
+                    · unlocks ${new Date(c.unlock_at).toLocaleString()}</div>
+                    <div class="meta">${locked
+                        ? `opens in <span class="countdown">${fmtLeft(left)}</span>`
+                        : `unlocked · read ${c.open_count} time(s) · click to open`}</div>
+                    ${opened[c.id] ? `<div class="message">${escapeHtml(opened[c.id])}</div>` : ""}
+                </div>`;
+            }).join("") || '<p class="sub">No capsules yet. Be the first!</p>';
+        }
+
+        async function load() {
+            const [list, stats] = await Promise.all([
+                fetch("/api/capsules/").then(r => r.json()),
+                fetch("/api/stats/").then(r => r.json()),
+            ]);
+            capsules = list.capsules;
+            $("sTotal").textContent = stats.total;
+            $("sLocked").textContent = stats.locked;
+            $("sUnlocked").textContent = stats.unlocked;
+            $("sOpens").textContent = stats.total_opens;
+            render();
+        }
+
+        $("list").addEventListener("click", async (e) => {
+            const el = e.target.closest(".capsule.unlocked");
+            if (!el) return;
+            const res = await fetch(`/api/capsules/${el.dataset.id}/`);
+            const data = await res.json();
+            if (res.ok) opened[data.id] = data.message;
+            load();
+        });
+
+        $("preset").addEventListener("change", () => {
+            $("customDate").hidden = $("preset").value !== "custom";
+        });
+
+        $("form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const body = { author: $("author").value, title: $("titleInput").value, message: $("message").value };
+            if ($("preset").value === "custom") {
+                if (!$("customDate").value) { $("formError").textContent = "Pick a date"; return; }
+                body.unlock_at = new Date($("customDate").value).toISOString();
+            } else {
+                body.unlock_in_seconds = Number($("preset").value);
+            }
+            const res = await fetch("/api/capsules/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                $("formError").textContent = Object.entries(data.errors || {}).map(([k, v]) => `${k}: ${v}`).join("; ");
+                return;
+            }
+            $("formError").textContent = "";
+            $("titleInput").value = $("message").value = "";
+            load();
+        });
+
+        load();
+        setInterval(render, 1000);   // tick countdowns
+        setInterval(load, 15000);    // pick up capsules created by others
+    </script>
+</body>
+
+</html>
