@@ -70,10 +70,21 @@ When the API container starts, it:
 
 ![Data model](docs/images/data-model.png)
 
-- A **planet** belongs to a **region** and can have several **climates** and **terrains**.
-- **People** and **species** each have a home planet.
-- A **person** can belong to species and can pilot **starships**.
-- A **film** lists the planets, people, species and starships that appear in it.
+How to read it: **PK** is the primary key, **FK** is a foreign key, and each line starts at the FK column
+and ends at the table it points to. `(null)` means the column can be empty.
+
+There are two kinds of links:
+
+- **One-to-many** links are stored as an FK column in the table itself. For example, `person.homeworld_id`
+  points to `planet`, and many people can come from one planet. `planet.region_id` and
+  `species.homeworld_id` work the same way.
+- **Many-to-many** links need an extra table in the middle (the grey tables). For example, a person can pilot
+  many starships and a starship can have many pilots, so `starship_pilots` stores one row per pair:
+  `(starship_id, person_id)`. Django creates these tables automatically from `ManyToManyField`.
+
+The blue tables are the main data, the yellow tables are short lists of values (regions, climates, terrains),
+and the grey tables are many-to-many links. In PostgreSQL every table name starts with `galaxy_`
+(for example `galaxy_starship_pilots`).
 
 SWAPI has no planet coordinates, so I added a map position to each planet (for example `"R-16"`).
 That position is used to calculate distances. 36 well-known planets have a position. You can add
