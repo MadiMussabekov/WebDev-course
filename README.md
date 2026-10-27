@@ -1,184 +1,104 @@
 # HoloNet Galactic Atlas API
 
-A containerised REST API for the Star Wars galaxy. Browse planets, species, people, starships and films
-imported from [SWAPI](https://swapi.dev), ask *"who lives on Tatooine?"* or *"which species are native to Naboo?"*,
-measure the hyperspace distance between two worlds and estimate how long the Millennium Falcon would take
-to get there.
+A Star Wars REST API. Look up planets, see who lives there, which species come from there,
+and how far apart two planets are. The data comes from [SWAPI](https://swapi.dev).
 
-**Stack:** Python 3.13 · Django 5.2 · Django REST Framework · drf-spectacular (OpenAPI / Swagger) ·
-PostgreSQL 17 · Gunicorn · Docker Compose
+**Built with:** Django REST Framework · PostgreSQL · Docker Compose
 
-## Quick start
+## How to run
 
-Requirements: Docker Desktop (or Docker Engine + Compose v2).
+You only need Docker Desktop.
 
 ```bash
-cp .env.example .env      # skip if you received a ready-made .env
+cp .env.example .env     # skip this if you already have a .env file
 docker compose up --build
 ```
 
-On first start the API container applies the migrations, loads the galaxy data and creates an admin user.
-Then open:
+Then open **http://localhost:8000/api/docs/** to see and try every endpoint (Swagger).
 
-| What | URL |
+| Page | URL |
 |---|---|
-| Swagger UI (API docs) | http://localhost:8000/api/docs/ |
-| ReDoc | http://localhost:8000/api/redoc/ |
-| API root | http://localhost:8000/api/ |
-| Django admin | http://localhost:8000/admin/ (credentials from `.env`) |
-| Adminer (DB browser) | http://localhost:8080 (server `db`, credentials from `.env`) |
+| API docs (Swagger) | http://localhost:8000/api/docs/ |
+| API | http://localhost:8000/api/ |
+| Admin panel | http://localhost:8000/admin/ (login and password are in `.env`) |
+| Database viewer (Adminer) | http://localhost:8080 (server: `db`, login and password are in `.env`) |
 
-Try it:
+To stop it, run `docker compose down`. Your data is kept. Run `docker compose down -v` to delete it too.
 
-```bash
-curl "http://localhost:8000/api/planets/tatooine/people/"
-curl "http://localhost:8000/api/planets/distance/?from=tatooine&to=hoth&starship=millennium-falcon"
-```
+## Main endpoints
 
-Stop with `docker compose down` (data is kept in the named volume) or `docker compose down -v` to wipe it.
+| What it does | Request |
+|---|---|
+| List planets | `GET /api/planets/` |
+| Get one planet (by id or name) | `GET /api/planets/1/` or `GET /api/planets/tatooine/` |
+| People from a planet | `GET /api/planets/tatooine/people/` |
+| Species on a planet | `GET /api/planets/naboo/species/` |
+| Distance between two planets | `GET /api/planets/distance/?from=tatooine&to=hoth` |
+| ... plus travel time by starship | `GET /api/planets/distance/?from=tatooine&to=hoth&starship=millennium-falcon` |
+| Closest planets | `GET /api/planets/coruscant/nearest/` |
+| Create / update / delete a planet | `POST /api/planets/`, `PUT` or `PATCH /api/planets/{id}/`, `DELETE /api/planets/{id}/` |
 
-## Documentation
+People, species, starships and films have the same create, read, update and delete endpoints.
+The full list with examples is in **[docs/API.md](docs/API.md)**.
 
-- **[docs/API.md](docs/API.md)** - endpoint reference with request/response examples
-- **[docs/openapi.yaml](docs/openapi.yaml)** - OpenAPI 3 schema (also served live at `/api/schema/`)
-- **[postman/](postman/)** - Postman collection (67 requests with tests) and environment
+## Postman
 
-### Postman
+1. In Postman, click **Import** and choose `postman/HoloNet.postman_collection.json`.
+2. Start the app with `docker compose up`.
+3. Click **Run collection**. All 67 requests have tests and should pass.
 
-Import `postman/HoloNet.postman_collection.json` (and optionally `postman/HoloNet.postman_environment.json`),
-then *Run collection*. The `baseUrl` variable defaults to `http://localhost:8000`. Each CRUD folder creates a record,
-reads, replaces (`PUT`), patches and deletes it, passing the new id between requests through collection
-variables, so the collection can be run repeatedly.
+## How it works
 
-From the command line, with the stack running:
+![Architecture](docs/images/architecture.png)
 
-```bash
-docker run --rm --network holonet_galaxy_net -v "$(pwd)/postman:/etc/newman" \
-  postman/newman:6-alpine run HoloNet.postman_collection.json --env-var baseUrl=http://api:8000
-```
+There are three containers on one Docker network (`galaxy_net`):
 
-## Architecture
+- **api** is the Django app, built from `backend/Dockerfile`. It starts only after the database is ready.
+- **db** is PostgreSQL. Its data is stored in the named volume `galaxy_data`, so it survives restarts.
+- **adminer** is a web page for looking inside the database.
 
-```
-                 host machine
-   :8000 │                       │ :8080
-┌────────▼─────────┐     ┌───────▼───────┐
-│ api              │     │ adminer       │
-│ Django + DRF     │     │ DB web UI     │
-│ Gunicorn         │     └───────┬───────┘
-└────────┬─────────┘             │
-         │  postgres://db:5432   │        network: galaxy_net (bridge)
-┌────────▼───────────────────────▼───────┐
-│ db  - PostgreSQL 17                    │
-│ /var/lib/postgresql/data ──► volume galaxy_data
-└────────────────────────────────────────┘
-```
+Containers find each other by name. For example, the API connects to the database at host `db`.
+All settings (passwords, ports, secret key) are read from the `.env` file.
 
-| Service | Image | Role |
-|---|---|---|
-| `api` | built from `backend/Dockerfile` | REST API; waits for `db` to be healthy, then migrates, seeds and starts Gunicorn |
-| `db` | `postgres:17-alpine` | relational database; data stored in the named volume `galaxy_data`; not published to the host |
-| `adminer` | `adminer:5` | optional web UI to inspect the database |
+When the API container starts, it:
 
-- **Networking:** all services join the user-defined bridge network `galaxy_net`. Containers reach each other
-  by service name through Docker's DNS - the API connects to host `db`, Adminer's default server is `db`.
-  Only the API (8000) and Adminer (8080) ports are published to the host.
-- **Persistence:** PostgreSQL writes to the named volume `galaxy_data`, so data survives
-  `docker compose down` / `up` and image rebuilds.
-- **Configuration:** everything environment-specific comes from `.env` (see `.env.example`): Django secret key,
-  debug flag, allowed hosts, database name/user/password, admin credentials, published ports, Gunicorn workers,
-  and `SEED_ON_STARTUP`. Compose uses the same file both for variable substitution in `docker-compose.yml` and
-  as the API container's `env_file`.
-- **Health checks:** `db` uses `pg_isready`; the API image has a `HEALTHCHECK` hitting `/api/health/`, which also
-  runs `SELECT 1` against the database. `depends_on: condition: service_healthy` makes the API start only once
-  PostgreSQL accepts connections.
+1. creates or updates the database tables (`migrate`);
+2. loads the Star Wars data if the database is empty;
+3. starts the web server (Gunicorn).
 
-### Dockerfile highlights (`backend/Dockerfile`)
+## Database
 
-1. `python:3.13-slim` base image.
-2. `requirements.txt` is copied and installed **before** the source code, so the dependency layer is cached
-   and rebuilding after a code change takes seconds.
-3. Static files (Swagger UI assets, admin) are collected at build time and served by WhiteNoise.
-4. The app runs as an unprivileged user (`jedi`), not root.
-5. `ENTRYPOINT` runs `entrypoint.sh` (migrate → seed → create superuser), then `exec`s the `CMD` (Gunicorn),
-   so Gunicorn becomes PID 1 and receives stop signals directly.
+![Data model](docs/images/data-model.png)
 
-## Data model
+- A **planet** belongs to a **region** and can have several **climates** and **terrains**.
+- **People** and **species** each have a home planet.
+- A **person** can belong to species and can pilot **starships**.
+- A **film** lists the planets, people, species and starships that appear in it.
 
-```
-Region 1───* Planet *───* Climate
-                │  *───* Terrain
-                │ 1
-     ┌──────────┼──────────────┐
-     * homeworld│              * homeworld
-   Person *────*  Species      │
-     │ *  (species)            │
-     *  pilots                 │
-  Starship                     │
-     *           *         *   *
-     └────── Film (planets, characters, species, starships)
-```
+SWAPI has no planet coordinates, so I added a map position to each planet (for example `"R-16"`).
+That position is used to calculate distances. 36 well-known planets have a position. You can add
+a position to any other planet with `PATCH /api/planets/{id}/` and `{"grid_square": "N-12"}`.
 
-SWAPI stores much of its data as free text (`"temperate, tropical"`, `"1,000"`, `"unknown"`). During import the
-data was normalised:
+The SWAPI data was downloaded once and saved in `backend/galaxy/fixtures/galaxy_seed.json`,
+so the app does not need the internet to start.
 
-- comma-separated **climates and terrains** became lookup tables with many-to-many relations, so you can filter
-  `?climate=arid` and the vocabulary can grow (`POST` a planet with a new climate and it is created);
-- numeric strings became real numeric columns (`PositiveBigIntegerField` for populations of a trillion,
-  `DecimalField` for mass/hyperdrive), and `"unknown"` became `NULL`;
-- SWAPI's placeholder planet called *"unknown"* was dropped; references to it became `homeworld = NULL`;
-- SWAPI leaves `species` empty for humans - those people were linked to the *Human* species explicitly;
-- every resource has a unique **slug**, so URLs can use names (`/planets/yavin-iv/`).
+## Project files
 
-**Galactic coordinates.** SWAPI has no positions, so `Planet` gets `region` and a galactic grid position
-(`grid_x`, `grid_y` ↔ `grid_square` like `"R-16"`), seeded for 36 well-known worlds from the canonical galaxy map.
-A check constraint guarantees both coordinates are set or both are `NULL`, and a composite index on
-`(grid_x, grid_y)` backs the nearest-neighbour query, which orders by a squared-distance expression computed in SQL.
-Uncharted planets return `422` from navigation endpoints until you chart them with `PATCH {"grid_square": "N-12"}`.
+| Path | What it is |
+|---|---|
+| `docker-compose.yml` | the three services, network and volume |
+| `.env.example` | template for the `.env` settings file |
+| `backend/Dockerfile` | how the API image is built |
+| `backend/galaxy/models.py` | database tables |
+| `backend/galaxy/views.py` | API endpoints |
+| `backend/galaxy/services/navigation.py` | distance and travel time math |
+| `docs/` | API documentation and diagrams (open `docs/images/diagrams.drawio` in draw.io to edit them) |
+| `postman/` | Postman collection |
 
-## Seeding
-
-The SWAPI data was downloaded once and committed as a Django fixture,
-`backend/galaxy/fixtures/galaxy_seed.json` (305 records). The one-off download/convert script was not kept in the
-repository: the snapshot makes start-up fast, reproducible and independent of SWAPI being online.
-
-`python manage.py seed_galaxy` loads the fixture only when the database has no planets (use `--force` to reload).
-The entrypoint runs it on every start when `SEED_ON_STARTUP=true`, which is safe because it is idempotent.
-
-## Project structure
-
-```
-.
-├── docker-compose.yml          # db + api + adminer, network, named volume
-├── .env.example                # documented configuration template (.env is git-ignored)
-├── backend/
-│   ├── Dockerfile
-│   ├── entrypoint.sh           # migrate → seed → superuser → exec gunicorn
-│   ├── requirements.txt
-│   ├── manage.py
-│   ├── config/                 # Django project: settings (env-driven), root urls, wsgi
-│   └── galaxy/                 # the app
-│       ├── models.py           # relational schema
-│       ├── serializers.py      # validation + representation
-│       ├── views.py            # viewsets and custom endpoints
-│       ├── filters.py          # query-string filters
-│       ├── urls.py             # router
-│       ├── services/navigation.py   # distance / travel-time maths
-│       ├── management/commands/seed_galaxy.py
-│       ├── fixtures/galaxy_seed.json
-│       ├── migrations/
-│       └── tests.py
-├── docs/                       # API.md + openapi.yaml
-└── postman/                    # collection + environment
-```
-
-## Development tasks
+## Useful commands
 
 ```bash
-docker compose exec api python manage.py test galaxy        # run the test suite (12 tests)
-docker compose exec api python manage.py makemigrations     # after changing models
-docker compose exec -T api python manage.py spectacular > docs/openapi.yaml  # regenerate the schema
-docker compose exec db psql -U galaxy -d galaxy             # SQL shell
-docker compose logs -f api                                  # follow API logs
-docker volume inspect holonet_galaxy_data                   # where the data lives
+docker compose exec api python manage.py test galaxy   # run the tests
+docker compose logs -f api                             # watch the API logs
+docker compose exec db psql -U galaxy -d galaxy        # open a SQL shell
 ```
