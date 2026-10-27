@@ -1,0 +1,3056 @@
+openapi: 3.0.3
+info:
+  title: HoloNet Galactic Atlas API
+  version: 1.0.0
+  description: A Star Wars atlas built on data imported from SWAPI. Browse planets,
+    species, people, films and starships, compute hyperspace distances between worlds
+    and estimate travel times for any starship.
+paths:
+  /api/stats/:
+    get:
+      operationId: stats_retrieve
+      summary: Galaxy-wide statistics
+      tags:
+      - Service
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/health/:
+    get:
+      operationId: health_retrieve
+      summary: Health check (API + database)
+      tags:
+      - Service
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/planets/:
+    get:
+      operationId: planets_list
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: List planets
+      parameters:
+      - in: query
+        name: charted
+        schema:
+          type: boolean
+      - in: query
+        name: climate
+        schema:
+          type: string
+      - in: query
+        name: max_population
+        schema:
+          type: integer
+      - in: query
+        name: min_population
+        schema:
+          type: integer
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: region
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: terrain
+        schema:
+          type: string
+      tags:
+      - Planets
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPlanetList'
+          description: ''
+    post:
+      operationId: planets_create
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Create a planet
+      tags:
+      - Planets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PlanetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PlanetRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Planet'
+          description: ''
+  /api/planets/distance/:
+    get:
+      operationId: planets_distance_retrieve
+      description: Computes the straight-line hyperspace distance between two charted
+        planets using their galactic grid coordinates. Pass `starship` to also estimate
+        the travel time based on its hyperdrive rating.
+      summary: Distance between two planets
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+        description: Origin planet id, slug or name.
+        required: true
+      - in: query
+        name: starship
+        schema:
+          type: string
+        description: Optional starship id, slug or name.
+      - in: query
+        name: to
+        schema:
+          type: string
+        description: Destination planet id, slug or name.
+        required: true
+      tags:
+      - Navigation
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Distance'
+          description: ''
+        '400':
+          description: Missing query parameters.
+        '404':
+          description: Planet or starship not found.
+        '422':
+          description: Route cannot be plotted (uncharted planet, no hyperdrive...).
+  /api/planets/{id}/:
+    get:
+      operationId: planets_retrieve
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Get a planet by id, slug or name
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Planets
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Planet'
+          description: ''
+    patch:
+      operationId: planets_partial_update
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Partially update a planet
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Planets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPlanetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPlanetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPlanetRequest'
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Planet'
+          description: ''
+    put:
+      operationId: planets_update
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Replace a planet
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Planets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PlanetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PlanetRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Planet'
+          description: ''
+    delete:
+      operationId: planets_destroy
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Delete a planet
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Planets
+      security:
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/planets/{id}/films/:
+    get:
+      operationId: planets_films_list
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Films a planet appears in
+      parameters:
+      - in: query
+        name: charted
+        schema:
+          type: boolean
+      - in: query
+        name: climate
+        schema:
+          type: string
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      - in: query
+        name: max_population
+        schema:
+          type: integer
+      - in: query
+        name: min_population
+        schema:
+          type: integer
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: region
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: terrain
+        schema:
+          type: string
+      tags:
+      - Planets
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFilmBriefList'
+          description: ''
+  /api/planets/{id}/nearest/:
+    get:
+      operationId: planets_nearest_list
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Closest charted planets
+      parameters:
+      - in: query
+        name: charted
+        schema:
+          type: boolean
+      - in: query
+        name: climate
+        schema:
+          type: string
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: How many neighbours to return (1-50, default 5).
+      - in: query
+        name: max_population
+        schema:
+          type: integer
+      - in: query
+        name: min_population
+        schema:
+          type: integer
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: region
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: terrain
+        schema:
+          type: string
+      tags:
+      - Navigation
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNearbyPlanetList'
+          description: ''
+        '422':
+          description: Planet is uncharted.
+  /api/planets/{id}/people/:
+    get:
+      operationId: planets_people_list
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Notable people born on a planet
+      parameters:
+      - in: query
+        name: charted
+        schema:
+          type: boolean
+      - in: query
+        name: climate
+        schema:
+          type: string
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      - in: query
+        name: max_population
+        schema:
+          type: integer
+      - in: query
+        name: min_population
+        schema:
+          type: integer
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: region
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: terrain
+        schema:
+          type: string
+      tags:
+      - Planets
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPersonBriefList'
+          description: ''
+  /api/planets/{id}/species/:
+    get:
+      operationId: planets_species_retrieve
+      description: '`native_species` are species whose homeworld is this planet. `resident_species`
+        groups the planet''s residents by species, with a head count.'
+      summary: Species native to or living on a planet
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Planets
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanetSpecies'
+          description: ''
+  /api/species/:
+    get:
+      operationId: species_list
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: List species
+      parameters:
+      - in: query
+        name: classification
+        schema:
+          type: string
+      - in: query
+        name: designation
+        schema:
+          type: string
+      - in: query
+        name: homeworld
+        schema:
+          type: string
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Species
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSpeciesList'
+          description: ''
+    post:
+      operationId: species_create
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Create a species
+      tags:
+      - Species
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpeciesRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SpeciesRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SpeciesRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Species'
+          description: ''
+  /api/species/{id}/:
+    get:
+      operationId: species_retrieve
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Get a species by id, slug or name
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Species
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Species'
+          description: ''
+    patch:
+      operationId: species_partial_update
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Partially update a species
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Species
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSpeciesRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSpeciesRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSpeciesRequest'
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Species'
+          description: ''
+    put:
+      operationId: species_update
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Replace a species
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Species
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpeciesRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SpeciesRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SpeciesRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Species'
+          description: ''
+    delete:
+      operationId: species_destroy
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Delete a species
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Species
+      security:
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/species/{id}/people/:
+    get:
+      operationId: species_people_list
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Known members of a species
+      parameters:
+      - in: query
+        name: classification
+        schema:
+          type: string
+      - in: query
+        name: designation
+        schema:
+          type: string
+      - in: query
+        name: homeworld
+        schema:
+          type: string
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Species
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPersonBriefList'
+          description: ''
+  /api/people/:
+    get:
+      operationId: people_list
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: List people
+      parameters:
+      - in: query
+        name: gender
+        schema:
+          type: string
+      - in: query
+        name: homeworld
+        schema:
+          type: string
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: species
+        schema:
+          type: string
+      tags:
+      - People
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPersonList'
+          description: ''
+    post:
+      operationId: people_create
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Create a person
+      tags:
+      - People
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PersonRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PersonRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+          description: ''
+  /api/people/{id}/:
+    get:
+      operationId: people_retrieve
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Get a person by id, slug or name
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - People
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+          description: ''
+    patch:
+      operationId: people_partial_update
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Partially update a person
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - People
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonRequest'
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+          description: ''
+    put:
+      operationId: people_update
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Replace a person
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - People
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PersonRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PersonRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+          description: ''
+    delete:
+      operationId: people_destroy
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Delete a person
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - People
+      security:
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/starships/:
+    get:
+      operationId: starships_list
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: List starships
+      parameters:
+      - in: query
+        name: max_hyperdrive_rating
+        schema:
+          type: number
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: starship_class
+        schema:
+          type: string
+      tags:
+      - Starships
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStarshipList'
+          description: ''
+    post:
+      operationId: starships_create
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Create a starship
+      tags:
+      - Starships
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StarshipRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StarshipRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StarshipRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Starship'
+          description: ''
+  /api/starships/{id}/:
+    get:
+      operationId: starships_retrieve
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Get a starship by id, slug or name
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Starships
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Starship'
+          description: ''
+    patch:
+      operationId: starships_partial_update
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Partially update a starship
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Starships
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStarshipRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStarshipRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStarshipRequest'
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Starship'
+          description: ''
+    put:
+      operationId: starships_update
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Replace a starship
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Starships
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StarshipRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StarshipRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StarshipRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Starship'
+          description: ''
+    delete:
+      operationId: starships_destroy
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Delete a starship
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Starships
+      security:
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/films/:
+    get:
+      operationId: films_list
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: List films
+      parameters:
+      - in: query
+        name: director
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Films
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFilmList'
+          description: ''
+    post:
+      operationId: films_create
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Create a film
+      tags:
+      - Films
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FilmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FilmRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Film'
+          description: ''
+  /api/films/{id}/:
+    get:
+      operationId: films_retrieve
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Get a film by id, slug or name
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Films
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Film'
+          description: ''
+    patch:
+      operationId: films_partial_update
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Partially update a film
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Films
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFilmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFilmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFilmRequest'
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Film'
+          description: ''
+    put:
+      operationId: films_update
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Replace a film
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Films
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FilmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FilmRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Film'
+          description: ''
+    delete:
+      operationId: films_destroy
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Delete a film
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Films
+      security:
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/regions/:
+    get:
+      operationId: regions_list
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: List galactic regions
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Reference data
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Region'
+          description: ''
+  /api/regions/{id}/:
+    get:
+      operationId: regions_retrieve
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Get a region by id or slug
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      tags:
+      - Reference data
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Region'
+          description: ''
+  /api/regions/{id}/planets/:
+    get:
+      operationId: regions_planets_list
+      description: Lets /resource/{id}/ accept an id, slug or name.
+      summary: Planets in a region
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        description: Numeric id, slug (`yavin-iv`) or exact name (`Yavin IV`, case-insensitive).
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Reference data
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Planet'
+          description: ''
+  /api/climates/:
+    get:
+      operationId: climates_list
+      summary: List climates with planet counts
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Reference data
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Climate'
+          description: ''
+  /api/climates/{id}/:
+    get:
+      operationId: climates_retrieve
+      summary: Get a climate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[^/]+$
+        required: true
+      tags:
+      - Reference data
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Climate'
+          description: ''
+  /api/terrains/:
+    get:
+      operationId: terrains_list
+      summary: List terrains with planet counts
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Reference data
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Terrain'
+          description: ''
+  /api/terrains/{id}/:
+    get:
+      operationId: terrains_retrieve
+      summary: Get a terrain
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^[^/]+$
+        required: true
+      tags:
+      - Reference data
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Terrain'
+          description: ''
+components:
+  schemas:
+    Climate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 60
+        planet_count:
+          type: integer
+          readOnly: true
+      required:
+      - id
+      - name
+      - planet_count
+    Distance:
+      type: object
+      properties:
+        origin:
+          type: object
+          additionalProperties: {}
+        destination:
+          type: object
+          additionalProperties: {}
+        distance:
+          type: object
+          additionalProperties: {}
+        travel:
+          type: object
+          additionalProperties: {}
+      required:
+      - destination
+      - distance
+      - origin
+    Film:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 100
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        episode_id:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        director:
+          type: string
+          maxLength: 100
+        producer:
+          type: string
+          maxLength: 200
+        release_date:
+          type: string
+          format: date
+          nullable: true
+        opening_crawl:
+          type: string
+        planets:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        characters:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        species:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        starships:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - episode_id
+      - id
+      - slug
+      - title
+      - updated_at
+    FilmBrief:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 100
+        slug:
+          type: string
+          maxLength: 120
+          pattern: ^[-a-zA-Z0-9_]+$
+        episode_id:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        release_date:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - episode_id
+      - id
+      - title
+    FilmRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        episode_id:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        director:
+          type: string
+          maxLength: 100
+        producer:
+          type: string
+          maxLength: 200
+        release_date:
+          type: string
+          format: date
+          nullable: true
+        opening_crawl:
+          type: string
+        planets:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        characters:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        species:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        starships:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+      required:
+      - episode_id
+      - title
+    NearbyPlanet:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        slug:
+          type: string
+          maxLength: 120
+          pattern: ^[-a-zA-Z0-9_]+$
+        region:
+          type: string
+          readOnly: true
+        grid_square:
+          type: string
+          readOnly: true
+        grid_distance:
+          type: number
+          format: double
+          readOnly: true
+        light_years:
+          type: integer
+          readOnly: true
+      required:
+      - grid_distance
+      - grid_square
+      - id
+      - light_years
+      - name
+      - region
+    PaginatedFilmBriefList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FilmBrief'
+    PaginatedFilmList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Film'
+    PaginatedNearbyPlanetList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NearbyPlanet'
+    PaginatedPersonBriefList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PersonBrief'
+    PaginatedPersonList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Person'
+    PaginatedPlanetList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Planet'
+    PaginatedSpeciesList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Species'
+    PaginatedStarshipList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Starship'
+    PatchedFilmRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        episode_id:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        director:
+          type: string
+          maxLength: 100
+        producer:
+          type: string
+          maxLength: 200
+        release_date:
+          type: string
+          format: date
+          nullable: true
+        opening_crawl:
+          type: string
+        planets:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        characters:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        species:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        starships:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+    PatchedPersonRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        birth_year:
+          type: string
+          description: BBY/ABY relative to the Battle of Yavin.
+          maxLength: 20
+        gender:
+          type: string
+          maxLength: 30
+        height:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Centimetres.
+        mass:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          nullable: true
+          description: Kilograms.
+        hair_color:
+          type: string
+          maxLength: 60
+        skin_color:
+          type: string
+          maxLength: 60
+        eye_color:
+          type: string
+          maxLength: 60
+        homeworld:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            slug:
+              type: string
+          description: Written as an integer id, read back as a summary object.
+          nullable: true
+        species:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        starships:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+    PatchedPlanetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        region:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            slug:
+              type: string
+          description: Written as an integer id, read back as a summary object.
+          nullable: true
+        grid_square:
+          type: string
+          nullable: true
+          description: Galactic grid square, e.g. "R-16". null = uncharted.
+        climates:
+          type: array
+          items:
+            type: string
+        terrains:
+          type: array
+          items:
+            type: string
+        rotation_period:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Hours per day.
+        orbital_period:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Days per year.
+        diameter:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Kilometres.
+        gravity:
+          type: string
+          maxLength: 60
+        surface_water:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+          description: Percentage of the surface covered by water.
+        population:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+    PatchedSpeciesRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        classification:
+          type: string
+          maxLength: 60
+        designation:
+          type: string
+          maxLength: 60
+        average_height:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Centimetres.
+        average_lifespan:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Years.
+        language:
+          type: string
+          maxLength: 100
+        skin_colors:
+          type: string
+          maxLength: 200
+        hair_colors:
+          type: string
+          maxLength: 200
+        eye_colors:
+          type: string
+          maxLength: 200
+        homeworld:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            slug:
+              type: string
+          description: Written as an integer id, read back as a summary object.
+          nullable: true
+    PatchedStarshipRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        model:
+          type: string
+          maxLength: 150
+        manufacturer:
+          type: string
+          maxLength: 200
+        starship_class:
+          type: string
+          maxLength: 60
+        hyperdrive_rating:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          nullable: true
+          description: Hyperdrive class - lower is faster (the Millennium Falcon is
+            0.5).
+        mglt:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Megalights per hour.
+        max_atmosphering_speed:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        length:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+          description: Metres.
+        crew:
+          type: string
+          maxLength: 60
+        passengers:
+          type: string
+          maxLength: 60
+        cargo_capacity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Kilograms.
+        consumables:
+          type: string
+          maxLength: 60
+        cost_in_credits:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        pilots:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+    Person:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        birth_year:
+          type: string
+          description: BBY/ABY relative to the Battle of Yavin.
+          maxLength: 20
+        gender:
+          type: string
+          maxLength: 30
+        height:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Centimetres.
+        mass:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          nullable: true
+          description: Kilograms.
+        hair_color:
+          type: string
+          maxLength: 60
+        skin_color:
+          type: string
+          maxLength: 60
+        eye_color:
+          type: string
+          maxLength: 60
+        homeworld:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            slug:
+              type: string
+          description: Written as an integer id, read back as a summary object.
+          nullable: true
+        species:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        starships:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - slug
+      - updated_at
+    PersonBrief:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        slug:
+          type: string
+          maxLength: 120
+          pattern: ^[-a-zA-Z0-9_]+$
+        birth_year:
+          type: string
+          description: BBY/ABY relative to the Battle of Yavin.
+          maxLength: 20
+        gender:
+          type: string
+          maxLength: 30
+        species:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - id
+      - name
+      - species
+    PersonRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        birth_year:
+          type: string
+          description: BBY/ABY relative to the Battle of Yavin.
+          maxLength: 20
+        gender:
+          type: string
+          maxLength: 30
+        height:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Centimetres.
+        mass:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          nullable: true
+          description: Kilograms.
+        hair_color:
+          type: string
+          maxLength: 60
+        skin_color:
+          type: string
+          maxLength: 60
+        eye_color:
+          type: string
+          maxLength: 60
+        homeworld:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            slug:
+              type: string
+          description: Written as an integer id, read back as a summary object.
+          nullable: true
+        species:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        starships:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+      required:
+      - name
+    Planet:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        region:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            slug:
+              type: string
+          description: Written as an integer id, read back as a summary object.
+          nullable: true
+        grid_square:
+          type: string
+          nullable: true
+          description: Galactic grid square, e.g. "R-16". null = uncharted.
+        grid_x:
+          type: integer
+          readOnly: true
+          nullable: true
+        grid_y:
+          type: integer
+          readOnly: true
+          nullable: true
+        climates:
+          type: array
+          items:
+            type: string
+        terrains:
+          type: array
+          items:
+            type: string
+        rotation_period:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Hours per day.
+        orbital_period:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Days per year.
+        diameter:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Kilometres.
+        gravity:
+          type: string
+          maxLength: 60
+        surface_water:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+          description: Percentage of the surface covered by water.
+        population:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        resident_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - grid_x
+      - grid_y
+      - id
+      - name
+      - resident_count
+      - slug
+      - updated_at
+    PlanetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        region:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            slug:
+              type: string
+          description: Written as an integer id, read back as a summary object.
+          nullable: true
+        grid_square:
+          type: string
+          nullable: true
+          description: Galactic grid square, e.g. "R-16". null = uncharted.
+        climates:
+          type: array
+          items:
+            type: string
+        terrains:
+          type: array
+          items:
+            type: string
+        rotation_period:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Hours per day.
+        orbital_period:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Days per year.
+        diameter:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Kilometres.
+        gravity:
+          type: string
+          maxLength: 60
+        surface_water:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+          description: Percentage of the surface covered by water.
+        population:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+      required:
+      - name
+    PlanetSpecies:
+      type: object
+      properties:
+        planet:
+          type: object
+          additionalProperties: {}
+        native_species:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpeciesBrief'
+        resident_species:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - native_species
+      - planet
+      - resident_species
+    Region:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 60
+        slug:
+          type: string
+          maxLength: 60
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+        order:
+          type: integer
+          maximum: 32767
+          minimum: 0
+          description: Distance rank from the galactic core.
+        planet_count:
+          type: integer
+          readOnly: true
+      required:
+      - id
+      - name
+      - planet_count
+      - slug
+    Species:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        classification:
+          type: string
+          maxLength: 60
+        designation:
+          type: string
+          maxLength: 60
+        average_height:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Centimetres.
+        average_lifespan:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Years.
+        language:
+          type: string
+          maxLength: 100
+        skin_colors:
+          type: string
+          maxLength: 200
+        hair_colors:
+          type: string
+          maxLength: 200
+        eye_colors:
+          type: string
+          maxLength: 200
+        homeworld:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            slug:
+              type: string
+          description: Written as an integer id, read back as a summary object.
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - slug
+      - updated_at
+    SpeciesBrief:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        slug:
+          type: string
+          maxLength: 120
+          pattern: ^[-a-zA-Z0-9_]+$
+        classification:
+          type: string
+          maxLength: 60
+        language:
+          type: string
+          maxLength: 100
+      required:
+      - id
+      - name
+    SpeciesRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        classification:
+          type: string
+          maxLength: 60
+        designation:
+          type: string
+          maxLength: 60
+        average_height:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Centimetres.
+        average_lifespan:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Years.
+        language:
+          type: string
+          maxLength: 100
+        skin_colors:
+          type: string
+          maxLength: 200
+        hair_colors:
+          type: string
+          maxLength: 200
+        eye_colors:
+          type: string
+          maxLength: 200
+        homeworld:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            slug:
+              type: string
+          description: Written as an integer id, read back as a summary object.
+          nullable: true
+      required:
+      - name
+    Starship:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        model:
+          type: string
+          maxLength: 150
+        manufacturer:
+          type: string
+          maxLength: 200
+        starship_class:
+          type: string
+          maxLength: 60
+        hyperdrive_rating:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          nullable: true
+          description: Hyperdrive class - lower is faster (the Millennium Falcon is
+            0.5).
+        mglt:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Megalights per hour.
+        max_atmosphering_speed:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        length:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+          description: Metres.
+        crew:
+          type: string
+          maxLength: 60
+        passengers:
+          type: string
+          maxLength: 60
+        cargo_capacity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Kilograms.
+        consumables:
+          type: string
+          maxLength: 60
+        cost_in_credits:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        pilots:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - slug
+      - updated_at
+    StarshipRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        model:
+          type: string
+          maxLength: 150
+        manufacturer:
+          type: string
+          maxLength: 200
+        starship_class:
+          type: string
+          maxLength: 60
+        hyperdrive_rating:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          nullable: true
+          description: Hyperdrive class - lower is faster (the Millennium Falcon is
+            0.5).
+        mglt:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Megalights per hour.
+        max_atmosphering_speed:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        length:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+          description: Metres.
+        crew:
+          type: string
+          maxLength: 60
+        passengers:
+          type: string
+          maxLength: 60
+        cargo_capacity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Kilograms.
+        consumables:
+          type: string
+          maxLength: 60
+        cost_in_credits:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        pilots:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              slug:
+                type: string
+            description: Written as an integer id, read back as a summary object.
+      required:
+      - name
+    Terrain:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 60
+        planet_count:
+          type: integer
+          readOnly: true
+      required:
+      - id
+      - name
+      - planet_count
