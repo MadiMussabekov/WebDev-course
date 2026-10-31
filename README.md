@@ -9,7 +9,6 @@ A REST API for space bounty hunters: a database of wanted criminals and a journa
 You only need Docker Desktop.
 
 ```bash
-cp .env.example .env     # skip if .env already exists
 docker compose up --build
 ```
 
@@ -141,7 +140,7 @@ It can also be run from the command line: `npx newman run postman/BountyHunters.
 |---|---|
 | `docker-compose.yml` | `db` (PostgreSQL 17) and `api` (Django) services |
 | `backend/config/urls.py` | URLs, including Swagger (`/api/docs/`) |
-| `.env.example` | settings template |
+| `.env` | settings (ports, database login) |
 | `backend/bounty/models.py` | `WantedCriminal` and `HuntLog` models |
 | `backend/bounty/serializers.py` | JSON serializers and validation |
 | `backend/bounty/views.py` | endpoints, filters and sorting |
